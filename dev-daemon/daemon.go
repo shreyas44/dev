@@ -14,12 +14,5 @@ func main() {
 	cmd.Stdout = outFile
 	cmd.Stderr = outFile
 
-	// ch := make(chan os.Signal)
-	// signal.Notify(ch, os.Interrupt, os.Kill)
-	// defer func() {
-	// <-ch
-	// cmd.Process.Kill()
-	// }()
-
 	cmd.Run()
 }
