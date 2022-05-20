@@ -11,6 +11,7 @@ import (
 	"path"
 	"strings"
 	"syscall"
+	"time"
 )
 
 var ErrNoDevFile = errors.New("no dev.nix file found")
@@ -45,13 +46,35 @@ var ErrNoDevFile = errors.New("no dev.nix file found")
 
 // const identifier = "com.dev.cli"
 
+type Markdowner interface {
+	Markdown() string
+}
+
+type processes []process
+
+func (p *processes) Markdown() string {
+	md := "| Name | PID | Started At |\n"
+	md += "| ---- | --- | ---------- |\n"
+
+	for _, process := range *p {
+		md += process.Markdown() + "\n"
+	}
+
+	return md
+}
+
 type process struct {
-	PID     int    `json:"pid"`
-	Name    string `json:"name"`
-	LogFile string `json:"logFile"`
+	PID       int       `json:"pid"`
+	Name      string    `json:"name"`
+	LogFile   string    `json:"logFile"`
+	StartedAt time.Time `json:"startedAt"`
 
 	// can be current dir or children
 	DevPath DevPath `json:"devPath"`
+}
+
+func (p *process) Markdown() string {
+	return fmt.Sprintf("| %s | %d | %s |", p.Name, p.PID, p.StartedAt.Format(time.RFC3339))
 }
 
 func (p *process) Stop() {
@@ -173,15 +196,32 @@ func (p *DevPath) startService(name string, service Service) {
 	cmd.Start()
 
 	db.addProcess(&process{
-		PID:     cmd.Process.Pid,
-		Name:    name,
-		LogFile: logFile,
-		DevPath: *p,
+		PID:       cmd.Process.Pid,
+		Name:      name,
+		LogFile:   logFile,
+		StartedAt: time.Now(),
+		DevPath:   *p,
 	})
 }
 
 func (p *DevPath) startChild(child Child) {
+	panic("TODO")
+}
 
+func (p *DevPath) Process(name string) (process, bool) {
+	db := loadDB(p.dirPath())
+	process, ok := db.Processes[name]
+	return process, ok
+}
+
+func (p *DevPath) Processes() processes {
+	db := loadDB(p.dirPath())
+	processes := make(processes, 0, len(db.Processes))
+	for _, process := range db.Processes {
+		processes = append(processes, process)
+	}
+
+	return processes
 }
 
 func (p *DevPath) Start() {
