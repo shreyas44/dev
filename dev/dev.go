@@ -8,7 +8,6 @@ import (
 	"os/exec"
 	"path"
 	"strings"
-	"syscall"
 
 	"github.com/shreyas44/dev/db"
 )
@@ -111,7 +110,7 @@ func (d *DevPath) Stop() {
 
 	for _, process := range d.DB().Processes {
 		if proc, err := os.FindProcess(process.PID); err == nil {
-			proc.Signal(syscall.SIGINT)
+			proc.Signal(os.Interrupt)
 		}
 	}
 }
