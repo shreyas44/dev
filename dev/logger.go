@@ -3,7 +3,6 @@ package dev
 import (
 	"fmt"
 	"math/rand"
-	"os"
 	"os/exec"
 	"strings"
 
@@ -47,14 +46,12 @@ type Logger struct {
 	Processes []db.Process
 }
 
-func NewLogger(services ...string) *Logger {
-	wd, _ := os.Getwd()
-	dev, _ := Get(wd)
+func NewLogger(dev Dev, services ...string) (*Logger, error) {
 	ps := []db.Process{}
 	for _, s := range services {
 		process, ok := dev.DB().ProcessByName(s)
 		if !ok {
-			panic("Service not found")
+			return nil, fmt.Errorf("service %s not found", s)
 		}
 
 		ps = append(ps, process)
@@ -64,7 +61,7 @@ func NewLogger(services ...string) *Logger {
 		ps = dev.DB().ProcessesList()
 	}
 
-	return &Logger{ps}
+	return &Logger{ps}, nil
 }
 
 func (l *Logger) watchService(ch chan string, process db.Process) {

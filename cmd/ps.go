@@ -6,21 +6,23 @@ package cmd
 
 import (
 	"fmt"
-	"os"
 
 	"github.com/rodaine/table"
 	"github.com/shreyas44/dev/db"
-	"github.com/shreyas44/dev/dev"
 	"github.com/spf13/cobra"
 )
 
 // psCmd represents the ps command
 var psCmd = &cobra.Command{
-	Use:   "ps",
-	Short: "List all running processes",
-	Run: func(cmd *cobra.Command, args []string) {
-		wd, _ := os.Getwd()
-		dev, _ := dev.Get(wd)
+	Use:          "ps",
+	Short:        "List all running processes",
+	SilenceUsage: true,
+	RunE: func(cmd *cobra.Command, args []string) error {
+		dev, err := getDev()
+		if err != nil {
+			return err
+		}
+
 		t := table.New("NAME", "PID", "SATUS")
 		for _, process := range dev.DB().ProcessesList() {
 			status := string(process.Status)
@@ -31,6 +33,8 @@ var psCmd = &cobra.Command{
 			t.AddRow(process.Name, process.PID, status)
 		}
 		t.Print()
+
+		return nil
 	},
 }
 

@@ -1,23 +1,24 @@
 package cmd
 
 import (
-	"os"
-
-	"github.com/shreyas44/dev/dev"
-
 	"github.com/spf13/cobra"
 )
 
 // runs "dev activate" before starting services
 var upCmd = &cobra.Command{
-	Use:   "up",
-	Short: "Initialize dev environment and start processes",
-	Run: func(cmd *cobra.Command, args []string) {
-		wd, _ := os.Getwd()
-		dev, _ := dev.Get(wd)
+	Use:          "up",
+	Short:        "Initialize dev environment and start processes",
+	SilenceUsage: true,
+	RunE: func(cmd *cobra.Command, args []string) error {
+		dev, err := getDev()
+		if err != nil {
+			return err
+		}
+
 		dev.Init()
 		dev.Stop()
 		dev.Start()
+		return nil
 	},
 }
 

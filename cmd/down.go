@@ -1,19 +1,21 @@
 package cmd
 
 import (
-	"os"
-
-	"github.com/shreyas44/dev/dev"
 	"github.com/spf13/cobra"
 )
 
 var downCmd = &cobra.Command{
-	Use:   "down",
-	Short: "Shutdown dev environment and stop processes",
-	Run: func(cmd *cobra.Command, args []string) {
-		wd, _ := os.Getwd()
-		dev, _ := dev.Get(wd)
+	Use:          "down",
+	Short:        "Shutdown dev environment and stop processes",
+	SilenceUsage: true,
+	RunE: func(cmd *cobra.Command, args []string) error {
+		dev, err := getDev()
+		if err != nil {
+			return err
+		}
+
 		dev.Stop()
+		return nil
 	},
 }
 
