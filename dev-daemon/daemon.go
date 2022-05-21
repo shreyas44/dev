@@ -6,21 +6,30 @@ import (
 	"os/signal"
 	"syscall"
 
-	"github.com/shreyas44/dev/db"
+	database "github.com/shreyas44/dev/db"
 )
 
 func main() {
 	var (
-		devNixPath = os.Args[1]
-		outputFile = os.Args[2]
-		script     = os.Args[3]
-		db         = db.Load(devNixPath)
-		process, _ = db.ProcessByPID(os.Getpid())
-		outFile, _ = os.Create(outputFile)
-		done       = make(chan bool)
-		sig        = make(chan os.Signal, 1)
-		cmd        = exec.Command("bash", "-c", script)
+		processName = os.Args[1]
+		devNixPath  = os.Args[2]
+		outputFile  = os.Args[3]
+		script      = os.Args[4]
+		db          = database.Load(devNixPath)
+		outFile, _  = os.Create(outputFile)
+		done        = make(chan bool)
+		sig         = make(chan os.Signal, 1)
+		cmd         = exec.Command("bash", "-c", script)
+		process     = database.Process{
+			Name:    processName,
+			PID:     os.Getpid(),
+			LogFile: outputFile,
+			Status:  database.ProcessStatusStarting,
+		}
 	)
+
+	// we add process here to avoid conflicting writes
+	db.UpdateProcess(process)
 
 	signal.Notify(sig, os.Interrupt)
 	cmd.SysProcAttr = &syscall.SysProcAttr{Setpgid: true}

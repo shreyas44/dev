@@ -71,15 +71,8 @@ func (p *DevPath) startService(name string, service Service) {
 
 	script := strings.Trim(strings.Trim(service.Cmd, " "), "\n")
 
-	cmd := exec.Command("dev-daemon", p.dirPath(), logFile, script)
+	cmd := exec.Command("dev-daemon", name, p.dirPath(), logFile, script)
 	cmd.Start()
-
-	p.DB().AddProcess(db.Process{
-		PID:     cmd.Process.Pid,
-		Name:    name,
-		LogFile: logFile,
-		Status:  db.ProcessStatusStarting,
-	})
 }
 
 func (p *DevPath) startChild(child Child) {
