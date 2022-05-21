@@ -73,7 +73,6 @@ func (p *DevPath) startService(name string, service Service) {
 	script := strings.Trim(strings.Trim(service.Cmd, " "), "\n")
 
 	cmd := exec.Command("dev-daemon", p.dirPath(), logFile, script)
-	cmd.SysProcAttr = &syscall.SysProcAttr{Setpgid: true}
 	cmd.Start()
 
 	p.DB().AddProcess(db.Process{
@@ -112,7 +111,7 @@ func (d *DevPath) Stop() {
 
 	for _, process := range d.DB().Processes {
 		if proc, err := os.FindProcess(process.PID); err == nil {
-			syscall.Kill(-proc.Pid, syscall.SIGKILL)
+			proc.Signal(syscall.SIGINT)
 		}
 	}
 }
