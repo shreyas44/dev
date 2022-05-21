@@ -14,8 +14,6 @@ import (
 
 var ErrNoDevFile = errors.New("no dev.nix file found")
 
-// const identifier = "com.dev.cli"
-
 type DevPath string
 
 func (p *DevPath) DB() *db.DB {
@@ -82,9 +80,8 @@ func (p *DevPath) Start() {
 	s.start()
 	defer s.stop()
 
-	setupEnv(config.Env)
-
 	for name, service := range config.Services {
+		setupEnv(mergeEnvs(config.Env, service.Env))
 		p.startService(name, service)
 	}
 
@@ -115,6 +112,18 @@ func setupEnv(env map[string]string) {
 	for key, value := range env {
 		os.Setenv(key, value)
 	}
+}
+
+func mergeEnvs(envs ...map[string]string) map[string]string {
+	result := make(map[string]string)
+
+	for _, env := range envs {
+		for key, value := range env {
+			result[key] = value
+		}
+	}
+
+	return result
 }
 
 func initNixEnv(profilePath, devNixPath string) {
