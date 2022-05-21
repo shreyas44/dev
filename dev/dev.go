@@ -53,9 +53,9 @@ func (d *Dev) Init() {
 	mkDirIfNotExists(logsPath)
 	mkDirIfNotExists(nixPath)
 
-	initNixEnv(profilePath, devNixPath)
+	d.initNixEnv(profilePath, devNixPath)
 	if config := d.config(); config.Init != "" {
-		runInitScript(config.Init)
+		d.runInitScript(config.Init)
 	}
 }
 
@@ -126,23 +126,29 @@ func mergeEnvs(envs ...map[string]string) map[string]string {
 	return result
 }
 
-func initNixEnv(profilePath, devNixPath string) {
+func (d *Dev) initNixEnv(profilePath, devNixPath string) {
 	s := newSpinner("Installing Dependencies", "Installed Dependencies")
 	s.start()
 	defer s.stop()
 
+	outFile, _ := os.Create(d.dirPath("nix_init.log"))
 	cmd := exec.Command("nix-env", "--preserve-installed", "-p", profilePath, "-f", devNixPath, "-iA", "deps")
+	cmd.Stdout = outFile
+	cmd.Stderr = outFile
 	cmd.Run()
 
 	os.Setenv("PATH", path.Join(profilePath, "bin")+string(os.PathListSeparator)+os.Getenv("PATH"))
 }
 
-func runInitScript(script string) {
+func (d *Dev) runInitScript(script string) {
 	s := newSpinner("Running Init Script", "Init Script Completed")
 	s.start()
 	defer s.stop()
 
+	outFile, _ := os.Create(d.dirPath("init_script.log"))
 	cmd := exec.Command("bash", "-c", script)
+	cmd.Stdout = outFile
+	cmd.Stderr = outFile
 	cmd.Run()
 }
 
