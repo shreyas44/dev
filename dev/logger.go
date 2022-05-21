@@ -37,7 +37,7 @@ func (e *ProcessLogEmitter) Write(p []byte) (int, error) {
 	c := color.New(e.color)
 	str := trim(string(p))
 	for _, line := range strings.Split(str, "\n") {
-		e.logCh <- fmt.Sprintf("[%s] %s", c.Sprint(e.Process.Name), line)
+		e.logCh <- c.Sprintf("[%s]", e.Process.Name) + " " + line
 	}
 
 	return len(p), nil
@@ -68,7 +68,7 @@ func NewLogger(services ...string) *Logger {
 }
 
 func (l *Logger) watchService(ch chan string, process db.Process) {
-	cmd := exec.Command("tail", "-f", process.LogFile)
+	cmd := exec.Command("tail", "-f", "-n", "+1", process.LogFile)
 	em := NewProcessLogEmitter(process, ch)
 	cmd.Stdout = em
 	cmd.Stderr = em
