@@ -133,6 +133,8 @@ func initNixEnv(profilePath, devNixPath string) {
 
 	cmd := exec.Command("nix-env", "--preserve-installed", "-p", profilePath, "-f", devNixPath, "-iA", "deps")
 	cmd.Run()
+
+	os.Setenv("PATH", path.Join(profilePath, "bin")+string(os.PathListSeparator)+os.Getenv("PATH"))
 }
 
 func runInitScript(script string) {

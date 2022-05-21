@@ -27,7 +27,6 @@ func main() {
 		}
 	)
 
-	// we add process here to avoid conflicting writes
 	db.UpdateProcess(devNixPath, process)
 
 	signal.Notify(sig, os.Interrupt)
@@ -41,6 +40,7 @@ func main() {
 
 	go func() {
 		<-sig
+		// cmd.Process.Kill() as syscall.SIGINT doesn't work for whatever reason
 		syscall.Kill(-cmd.Process.Pid, syscall.SIGKILL)
 		process.ExitCode = cmd.ProcessState.ExitCode()
 		process.Status = "stopped"
