@@ -16,34 +16,6 @@ import (
 
 var ErrNoDevFile = errors.New("no dev.nix file found")
 
-// use --preserve-installed --from-profile
-
-// root option of -f to specify file name
-// get path to `nix-env` before running up
-
-// check active nix profile path
-// if it's a dev cli profile
-// 		switch to another new profile and install all dependencies of older profile and newer profile
-// switch to new profile and install all of its dependencies
-// create new nix profile with hash of folder path
-// keep track of all nix profiles created and which paths they belong to
-
-// on dev down
-// check currently active profile
-// if current nix profile doesn't include path
-// 		warn nix profile not changed and shutdown processes
-// if it's a combination of two other profiles
-//		switch to the first profile
-// else
-// 		switch to the older profile
-
-// profile name = hash (path + name +  old profile is dev cli ? hash of old profile : old profile path)
-
-// start background processes with logs to logs/
-// keep track of background processes in db.json
-// kill background processes and exit nix shell on exit
-// add option to use env mode where nix-env is used instead of nix-shell
-
 // const identifier = "com.dev.cli"
 
 type Markdowner interface {
@@ -155,7 +127,7 @@ func (p *DevPath) Init() {
 	fmt.Println("Installing Dependencies")
 	fmt.Println()
 
-	cmd := exec.Command("nix-env", "-p", profilePath, "-f", devNixPath, "-iA", "deps")
+	cmd := exec.Command("nix-env", "--preserve-installed", "-p", profilePath, "-f", devNixPath, "-iA", "deps")
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr
 
