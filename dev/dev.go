@@ -14,16 +14,18 @@ import (
 
 var ErrNoDevFile = errors.New("no dev.nix file found")
 
-type DevPath string
-
-func (p *DevPath) DB() *db.DB {
-	return db.Load(p.dirPath())
+type Dev struct {
+	Path string
 }
 
-func (p *DevPath) config() Config {
+func (d *Dev) DB() *db.DB {
+	return db.Load(d.dirPath())
+}
+
+func (d *Dev) config() Config {
 	var config Config
 	evalOut := bytes.NewBuffer(nil)
-	cmd := exec.Command("nix", "eval", "-f", path.Join(string(*p), "dev.nix"), "--json")
+	cmd := exec.Command("nix", "eval", "-f", path.Join(d.Path, "dev.nix"), "--json")
 	cmd.Stdout = evalOut
 	cmd.Run()
 	json.Unmarshal(evalOut.Bytes(), &config)
@@ -31,20 +33,20 @@ func (p *DevPath) config() Config {
 	return config
 }
 
-func (p *DevPath) dirPath(elem ...string) string {
-	return path.Join(string(*p), ".dev-cli", path.Join(elem...))
+func (d *Dev) dirPath(elem ...string) string {
+	return path.Join(d.Path, ".dev-cli", path.Join(elem...))
 }
 
-func (p *DevPath) logFilePath(elem ...string) string {
-	return path.Join(p.dirPath(), "logs", path.Join(elem...))
+func (d *Dev) logFilePath(elem ...string) string {
+	return path.Join(d.dirPath(), "logs", path.Join(elem...))
 }
 
-func (p *DevPath) Init() {
-	dirPath := p.dirPath()
-	logsPath := p.dirPath("logs")
-	devNixPath := p.dirPath("..", "dev.nix")
-	nixPath := p.dirPath("nix")
-	profilePath := p.dirPath("nix", "profile")
+func (d *Dev) Init() {
+	dirPath := d.dirPath()
+	logsPath := d.dirPath("logs")
+	devNixPath := d.dirPath("..", "dev.nix")
+	nixPath := d.dirPath("nix")
+	profilePath := d.dirPath("nix", "profile")
 
 	os.RemoveAll(nixPath)
 	mkDirIfNotExists(dirPath)
@@ -52,45 +54,43 @@ func (p *DevPath) Init() {
 	mkDirIfNotExists(nixPath)
 
 	initNixEnv(profilePath, devNixPath)
-	if config := p.config(); config.Init != "" {
+	if config := d.config(); config.Init != "" {
 		runInitScript(config.Init)
 	}
 }
 
-func (p *DevPath) startService(name string, service Service) {
-	logFile := p.logFilePath(name + ".log")
+func (d *Dev) startService(name string, service Service) {
+	logFile := d.logFilePath(name + ".log")
 	os.OpenFile(logFile, os.O_RDWR|os.O_CREATE|os.O_APPEND, os.ModePerm)
 	setupEnv(service.Env)
 
 	script := strings.Trim(strings.Trim(service.Cmd, " "), "\n")
 
-	cmd := exec.Command("dev-daemon", name, p.dirPath(), logFile, script)
+	cmd := exec.Command("dev-daemon", name, d.dirPath(), logFile, script)
 	cmd.Start()
 }
 
-func (p *DevPath) startChild(child Child) {
+func (d *Dev) startChild(child Child) {
 	panic("TODO")
 }
 
-func (p *DevPath) Start() {
-	p.Stop()
-
-	config := p.config()
+func (d *Dev) Start() {
+	config := d.config()
 	s := newSpinner("Starting Services", "Started Services")
 	s.start()
 	defer s.stop()
 
 	for name, service := range config.Services {
 		setupEnv(mergeEnvs(config.Env, service.Env))
-		p.startService(name, service)
+		d.startService(name, service)
 	}
 
 	for _, child := range config.Children {
-		p.startChild(child)
+		d.startChild(child)
 	}
 }
 
-func (d *DevPath) Stop() {
+func (d *Dev) Stop() {
 	s := newSpinner("Stopping Services", "Stopped Services")
 	s.start()
 	defer s.stop()
@@ -146,14 +146,14 @@ func runInitScript(script string) {
 	cmd.Run()
 }
 
-func GetDevNixPath(wd string) (DevPath, error) {
+func Get(wd string) (Dev, error) {
 	if _, err := os.Stat(path.Join(wd, "dev.nix")); !os.IsNotExist(err) {
-		return DevPath(wd), nil
+		return Dev{wd}, nil
 	}
 
 	if wd == "/" {
-		return "", ErrNoDevFile
+		return Dev{}, ErrNoDevFile
 	}
 
-	return GetDevNixPath(path.Dir(wd))
+	return Get(path.Dir(wd))
 }

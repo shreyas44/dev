@@ -14,9 +14,10 @@ var upCmd = &cobra.Command{
 	Short: "Initialize dev environment and start processes",
 	Run: func(cmd *cobra.Command, args []string) {
 		wd, _ := os.Getwd()
-		devNixPath, _ := dev.GetDevNixPath(wd)
-		devNixPath.Init()
-		devNixPath.Start()
+		dev, _ := dev.Get(wd)
+		dev.Init()
+		dev.Stop()
+		dev.Start()
 	},
 }
 

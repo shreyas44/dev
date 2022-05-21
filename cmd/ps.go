@@ -20,9 +20,9 @@ var psCmd = &cobra.Command{
 	Short: "List all running processes",
 	Run: func(cmd *cobra.Command, args []string) {
 		wd, _ := os.Getwd()
-		devNixPath, _ := dev.GetDevNixPath(wd)
+		dev, _ := dev.Get(wd)
 		t := table.New("NAME", "PID", "SATUS")
-		for _, process := range devNixPath.DB().ProcessesList() {
+		for _, process := range dev.DB().ProcessesList() {
 			status := string(process.Status)
 			if process.Status == db.ProcessStatusExited {
 				status += fmt.Sprintf(" (%d)", process.ExitCode)

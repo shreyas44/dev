@@ -12,8 +12,8 @@ var downCmd = &cobra.Command{
 	Short: "Shutdown dev environment and stop processes",
 	Run: func(cmd *cobra.Command, args []string) {
 		wd, _ := os.Getwd()
-		devNixPath, _ := dev.GetDevNixPath(wd)
-		devNixPath.Stop()
+		dev, _ := dev.Get(wd)
+		dev.Stop()
 	},
 }
 

@@ -12,7 +12,7 @@ import (
 func main() {
 	var (
 		processName = os.Args[1]
-		devNixPath  = os.Args[2]
+		devDir      = os.Args[2]
 		outputFile  = os.Args[3]
 		script      = os.Args[4]
 		outFile, _  = os.Create(outputFile)
@@ -27,7 +27,7 @@ func main() {
 		}
 	)
 
-	db.UpdateProcess(devNixPath, process)
+	db.UpdateProcess(devDir, process)
 
 	signal.Notify(sig, os.Interrupt)
 	cmd.SysProcAttr = &syscall.SysProcAttr{Setpgid: true}
@@ -36,7 +36,7 @@ func main() {
 	cmd.Start()
 
 	process.Status = "running"
-	db.UpdateProcess(devNixPath, process)
+	db.UpdateProcess(devDir, process)
 
 	go func() {
 		<-sig
@@ -44,7 +44,7 @@ func main() {
 		syscall.Kill(-cmd.Process.Pid, syscall.SIGKILL)
 		process.ExitCode = cmd.ProcessState.ExitCode()
 		process.Status = "stopped"
-		db.UpdateProcess(devNixPath, process)
+		db.UpdateProcess(devDir, process)
 		done <- true
 	}()
 

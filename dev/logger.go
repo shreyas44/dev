@@ -49,10 +49,10 @@ type Logger struct {
 
 func NewLogger(services ...string) *Logger {
 	wd, _ := os.Getwd()
-	devPath, _ := GetDevNixPath(wd)
+	dev, _ := Get(wd)
 	ps := []db.Process{}
 	for _, s := range services {
-		process, ok := devPath.DB().ProcessByName(s)
+		process, ok := dev.DB().ProcessByName(s)
 		if !ok {
 			panic("Service not found")
 		}
@@ -61,7 +61,7 @@ func NewLogger(services ...string) *Logger {
 	}
 
 	if len(services) == 0 {
-		ps = devPath.DB().ProcessesList()
+		ps = dev.DB().ProcessesList()
 	}
 
 	return &Logger{ps}
