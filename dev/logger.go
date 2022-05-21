@@ -5,7 +5,6 @@ import (
 	"math/rand"
 	"os"
 	"os/exec"
-	"os/signal"
 	"strings"
 
 	"github.com/fatih/color"
@@ -25,10 +24,17 @@ type ProcessLogEmitter struct {
 	color color.Attribute
 }
 
-func (e *ProcessLogEmitter) Write(p []byte) (n int, err error) {
+func NewProcessLogEmitter(process process, logCh chan string) *ProcessLogEmitter {
+	return &ProcessLogEmitter{process, logCh, colors[rand.Intn(len(colors))]}
+}
+
+func (e *ProcessLogEmitter) Write(p []byte) (int, error) {
 	c := color.New(e.color)
 	str := strings.Trim(strings.Trim(string(p), " "), "\n")
-	e.logCh <- fmt.Sprintf("[%s] %s", c.Sprint(e.process.Name), str)
+	for _, line := range strings.Split(str, "\n") {
+		e.logCh <- fmt.Sprintf("[%s] %s", c.Sprint(e.process.Name), line)
+	}
+
 	return len(p), nil
 }
 
@@ -58,15 +64,14 @@ func NewLogger(services ...string) *Logger {
 
 func (l *Logger) watchService(ch chan string, process process) {
 	cmd := exec.Command("tail", "-f", process.LogFile)
-	em := &ProcessLogEmitter{process, ch, colors[rand.Intn(len(colors))]}
+	em := NewProcessLogEmitter(process, ch)
 	cmd.Stdout = em
 	cmd.Stderr = em
 
-	cmd.Start()
+	cmd.Run()
 }
 
 func (l *Logger) Watch() {
-	done := make(chan bool)
 	logCh := make(chan string)
 
 	for _, p := range l.Processes {
@@ -74,17 +79,11 @@ func (l *Logger) Watch() {
 	}
 
 	go func() {
-		sig := make(chan os.Signal)
-		signal.Notify(sig, os.Interrupt)
-		<-sig
-		done <- true
-	}()
-
-	go func() {
 		for str := range logCh {
 			fmt.Println(str)
 		}
 	}()
 
-	<-done
+	immortalize := make(chan bool)
+	<-immortalize
 }
