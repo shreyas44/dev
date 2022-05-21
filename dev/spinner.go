@@ -3,24 +3,24 @@ package dev
 import (
 	"time"
 
-	"github.com/briandowns/spinner"
+	bspinner "github.com/briandowns/spinner"
 	"github.com/fatih/color"
 )
 
-type Spinner struct {
+type spinner struct {
 	finishedLabel string
-	spinner       *spinner.Spinner
+	spinner       *bspinner.Spinner
 }
 
-func newSpinner(runningLabel, finishedLabel string) *Spinner {
-	return &Spinner{finishedLabel, spinner.New(spinner.CharSets[11], 100*time.Millisecond, spinner.WithSuffix(" "+runningLabel))}
+func newSpinner(runningLabel, finishedLabel string) *spinner {
+	return &spinner{finishedLabel, bspinner.New(bspinner.CharSets[11], 100*time.Millisecond, bspinner.WithSuffix(" "+runningLabel))}
 }
 
-func (i *Spinner) start() {
+func (i *spinner) start() {
 	i.spinner.Start()
 }
 
-func (i *Spinner) stop() {
+func (i *spinner) stop() {
 	i.spinner.Stop()
 	color.Green("✓ %s", i.finishedLabel)
 }
