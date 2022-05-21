@@ -6,7 +6,7 @@ import (
 	"os/signal"
 	"syscall"
 
-	database "github.com/shreyas44/dev/db"
+	"github.com/shreyas44/dev/db"
 )
 
 func main() {
@@ -15,21 +15,20 @@ func main() {
 		devNixPath  = os.Args[2]
 		outputFile  = os.Args[3]
 		script      = os.Args[4]
-		db          = database.Load(devNixPath)
 		outFile, _  = os.Create(outputFile)
 		done        = make(chan bool)
 		sig         = make(chan os.Signal, 1)
 		cmd         = exec.Command("bash", "-c", script)
-		process     = database.Process{
+		process     = db.Process{
 			Name:    processName,
 			PID:     os.Getpid(),
 			LogFile: outputFile,
-			Status:  database.ProcessStatusStarting,
+			Status:  db.ProcessStatusStarting,
 		}
 	)
 
 	// we add process here to avoid conflicting writes
-	db.UpdateProcess(process)
+	db.UpdateProcess(devNixPath, process)
 
 	signal.Notify(sig, os.Interrupt)
 	cmd.SysProcAttr = &syscall.SysProcAttr{Setpgid: true}
@@ -38,14 +37,14 @@ func main() {
 	cmd.Start()
 
 	process.Status = "running"
-	db.UpdateProcess(process)
+	db.UpdateProcess(devNixPath, process)
 
 	go func() {
 		<-sig
 		syscall.Kill(-cmd.Process.Pid, syscall.SIGKILL)
 		process.ExitCode = cmd.ProcessState.ExitCode()
 		process.Status = "stopped"
-		db.UpdateProcess(process)
+		db.UpdateProcess(devNixPath, process)
 		done <- true
 	}()
 

@@ -30,8 +30,12 @@ type DB struct {
 	Processes map[string]Process `json:"processes"`
 }
 
+func getDBPath(dir string) string {
+	return path.Join(dir, "db.json")
+}
+
 func Load(dir string) *DB {
-	filePath := path.Join(dir, "db.json")
+	filePath := getDBPath(dir)
 	if _, err := os.Stat(filePath); os.IsNotExist(err) {
 		os.Create(filePath)
 		ioutil.WriteFile(filePath, []byte("{}"), os.ModePerm)
@@ -45,7 +49,7 @@ func Load(dir string) *DB {
 	return db
 }
 
-func (db *DB) Save() {
+func (db *DB) save() {
 	data, _ := json.Marshal(db)
 	ioutil.WriteFile(db.filePath, data, os.ModePerm)
 }
@@ -73,27 +77,21 @@ func (db *DB) ProcessesList() []Process {
 	return processes
 }
 
-func (db *DB) AddProcess(process Process) {
-	if _, ok := db.Processes[process.Name]; ok {
-		panic("Process already exists")
-	}
+func Update(dir string, newDb func(DB) DB) {
+	filepath := getDBPath(dir)
+	fd, _ := syscall.Open(filepath, syscall.O_RDWR, 0)
+	syscall.Flock(fd, syscall.LOCK_EX)
 
-	db.Processes[process.Name] = process
-	db.Save()
+	db := Load(dir)
+	new := newDb(*db)
+	new.save()
+
+	syscall.Flock(fd, syscall.LOCK_UN)
 }
 
-func (db *DB) UpdateProcess(process Process) {
-	db.Processes[process.Name] = process
-	db.Save()
-}
-
-func (db *DB) RemoveProcess(process Process) {
-	delete(db.Processes, process.Name)
-	db.Save()
-}
-
-func (p *Process) stop() {
-	if proc, err := os.FindProcess(p.PID); err == nil {
-		syscall.Kill(-proc.Pid, syscall.SIGKILL)
-	}
+func UpdateProcess(dir string, proceess Process) {
+	Update(dir, func(db DB) DB {
+		db.Processes[proceess.Name] = proceess
+		return db
+	})
 }
