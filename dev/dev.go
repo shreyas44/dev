@@ -4,93 +4,24 @@ import (
 	"bytes"
 	"encoding/json"
 	"errors"
-	"fmt"
-	"io/ioutil"
 	"os"
 	"os/exec"
 	"path"
 	"strings"
 	"syscall"
-	"time"
+
+	"github.com/shreyas44/dev/db"
 )
 
 var ErrNoDevFile = errors.New("no dev.nix file found")
 
 // const identifier = "com.dev.cli"
 
-type Markdowner interface {
-	Markdown() string
-}
-
-type processes []process
-
-func (p *processes) Markdown() string {
-	md := "| Name | PID | Started At |\n"
-	md += "| ---- | --- | ---------- |\n"
-
-	for _, process := range *p {
-		md += process.Markdown() + "\n"
-	}
-
-	return md
-}
-
-type process struct {
-	PID       int       `json:"pid"`
-	Name      string    `json:"name"`
-	LogFile   string    `json:"logFile"`
-	StartedAt time.Time `json:"startedAt"`
-
-	// can be current dir or children
-	DevPath DevPath `json:"devPath"`
-}
-
-func (p *process) Markdown() string {
-	return fmt.Sprintf("| %s | %d | %s |", p.Name, p.PID, p.StartedAt.Format(time.RFC3339))
-}
-
-func (p *process) Stop() {
-	if proc, err := os.FindProcess(p.PID); err == nil {
-		syscall.Kill(-proc.Pid, syscall.SIGKILL)
-	}
-}
-
-type db struct {
-	filePath  string
-	Processes map[string]process `json:"processes"`
-}
-
-func loadDB(dir string) *db {
-	filePath := path.Join(dir, "db.json")
-	if _, err := os.Stat(filePath); os.IsNotExist(err) {
-		os.Create(filePath)
-		ioutil.WriteFile(filePath, []byte("{}"), os.ModePerm)
-	}
-
-	db := &db{Processes: make(map[string]process)}
-	data, _ := ioutil.ReadFile(filePath)
-	json.Unmarshal(data, db)
-	db.filePath = filePath
-
-	return db
-}
-
-func (db *db) save() {
-	data, _ := json.Marshal(db)
-	ioutil.WriteFile(db.filePath, data, os.ModePerm)
-}
-
-func (db *db) addProcess(process *process) {
-	db.Processes[process.Name] = *process
-	db.save()
-}
-
-func (db *db) removeProcess(process *process) {
-	delete(db.Processes, process.Name)
-	db.save()
-}
-
 type DevPath string
+
+func (p *DevPath) DB() *db.DB {
+	return db.Load(p.dirPath())
+}
 
 func (p *DevPath) config() Config {
 	var config Config
@@ -123,39 +54,17 @@ func (p *DevPath) Init() {
 	mkDirIfNotExists(logsPath)
 	mkDirIfNotExists(nixPath)
 
-	fmt.Println()
-	fmt.Println("Installing Dependencies")
-	fmt.Println()
-
-	cmd := exec.Command("nix-env", "--preserve-installed", "-p", profilePath, "-f", devNixPath, "-iA", "deps")
-	cmd.Stdout = os.Stdout
-	cmd.Stderr = os.Stderr
-
-	cmd.Run()
-
-	fmt.Println()
-	fmt.Println("Installed Dependencies")
-	fmt.Println()
-
-	config := p.config()
-	if config.Init != "" {
-		fmt.Println()
-		fmt.Println("Running Init Script")
-		fmt.Println()
-
-		cmd := exec.Command("bash", "-c", config.Init)
-		cmd.Stdout = os.Stdout
-		cmd.Stderr = os.Stderr
-		cmd.Stdin = os.Stdin
-		cmd.Run()
+	initNixEnv(profilePath, devNixPath)
+	if config := p.config(); config.Init != "" {
+		runInitScript(config.Init)
 	}
 }
 
 func (p *DevPath) startService(name string, service Service) {
-	db := loadDB(p.dirPath())
-	if process, ok := db.Processes[name]; ok {
-		process.Stop()
-	}
+	// data := p.db()
+	// if process, ok := db.Processes[name]; ok {
+	// 	process.stop()
+	// }
 
 	logFile := p.logFilePath(name + ".log")
 	os.OpenFile(logFile, os.O_RDWR|os.O_CREATE|os.O_APPEND, os.ModePerm)
@@ -163,16 +72,15 @@ func (p *DevPath) startService(name string, service Service) {
 
 	script := strings.Trim(strings.Trim(service.Cmd, " "), "\n")
 
-	cmd := exec.Command("dev-daemon", logFile, script)
+	cmd := exec.Command("dev-daemon", p.dirPath(), logFile, script)
 	cmd.SysProcAttr = &syscall.SysProcAttr{Setpgid: true}
 	cmd.Start()
 
-	db.addProcess(&process{
-		PID:       cmd.Process.Pid,
-		Name:      name,
-		LogFile:   logFile,
-		StartedAt: time.Now(),
-		DevPath:   *p,
+	p.DB().AddProcess(db.Process{
+		PID:     cmd.Process.Pid,
+		Name:    name,
+		LogFile: logFile,
+		Status:  db.ProcessStatusStarting,
 	})
 }
 
@@ -180,24 +88,12 @@ func (p *DevPath) startChild(child Child) {
 	panic("TODO")
 }
 
-func (p *DevPath) Process(name string) (process, bool) {
-	db := loadDB(p.dirPath())
-	process, ok := db.Processes[name]
-	return process, ok
-}
-
-func (p *DevPath) Processes() processes {
-	db := loadDB(p.dirPath())
-	processes := make(processes, 0, len(db.Processes))
-	for _, process := range db.Processes {
-		processes = append(processes, process)
-	}
-
-	return processes
-}
-
 func (p *DevPath) Start() {
 	config := p.config()
+	s := newSpinner("Starting Services", "Started Services")
+	s.start()
+	defer s.stop()
+
 	setupEnv(config.Env)
 
 	for name, service := range config.Services {
@@ -210,11 +106,14 @@ func (p *DevPath) Start() {
 }
 
 func (d *DevPath) Stop() {
-	db := loadDB(d.dirPath())
-	for _, process := range db.Processes {
-		fmt.Println("stopping process")
-		db.removeProcess(&process)
-		process.Stop()
+	s := newSpinner("Stopping Services", "Stopped Services")
+	s.start()
+	defer s.stop()
+
+	for _, process := range d.DB().Processes {
+		if proc, err := os.FindProcess(process.PID); err == nil {
+			syscall.Kill(-proc.Pid, syscall.SIGKILL)
+		}
 	}
 }
 
@@ -228,6 +127,24 @@ func setupEnv(env map[string]string) {
 	for key, value := range env {
 		os.Setenv(key, value)
 	}
+}
+
+func initNixEnv(profilePath, devNixPath string) {
+	s := newSpinner("Installing Dependencies", "Installed Dependencies")
+	s.start()
+	defer s.stop()
+
+	cmd := exec.Command("nix-env", "--preserve-installed", "-p", profilePath, "-f", devNixPath, "-iA", "deps")
+	cmd.Run()
+}
+
+func runInitScript(script string) {
+	s := newSpinner("Running Init Script", "Init Script Completed")
+	s.start()
+	defer s.stop()
+
+	cmd := exec.Command("bash", "-c", script)
+	cmd.Run()
 }
 
 func GetDevNixPath(wd string) (DevPath, error) {

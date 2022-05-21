@@ -8,6 +8,7 @@ import (
 	"strings"
 
 	"github.com/fatih/color"
+	"github.com/shreyas44/dev/db"
 )
 
 var colors = []color.Attribute{
@@ -18,36 +19,40 @@ var colors = []color.Attribute{
 	color.FgGreen,
 }
 
+func trim(str string) string {
+	return strings.Trim(strings.Trim(str, " "), "\n")
+}
+
 type ProcessLogEmitter struct {
-	process
+	db.Process
 	logCh chan string
 	color color.Attribute
 }
 
-func NewProcessLogEmitter(process process, logCh chan string) *ProcessLogEmitter {
+func NewProcessLogEmitter(process db.Process, logCh chan string) *ProcessLogEmitter {
 	return &ProcessLogEmitter{process, logCh, colors[rand.Intn(len(colors))]}
 }
 
 func (e *ProcessLogEmitter) Write(p []byte) (int, error) {
 	c := color.New(e.color)
-	str := strings.Trim(strings.Trim(string(p), " "), "\n")
+	str := trim(string(p))
 	for _, line := range strings.Split(str, "\n") {
-		e.logCh <- fmt.Sprintf("[%s] %s", c.Sprint(e.process.Name), line)
+		e.logCh <- fmt.Sprintf("[%s] %s", c.Sprint(e.Process.Name), line)
 	}
 
 	return len(p), nil
 }
 
 type Logger struct {
-	Processes processes
+	Processes []db.Process
 }
 
 func NewLogger(services ...string) *Logger {
 	wd, _ := os.Getwd()
 	devPath, _ := GetDevNixPath(wd)
-	ps := processes{}
+	ps := []db.Process{}
 	for _, s := range services {
-		process, ok := devPath.Process(s)
+		process, ok := devPath.DB().ProcessByName(s)
 		if !ok {
 			panic("Service not found")
 		}
@@ -56,13 +61,13 @@ func NewLogger(services ...string) *Logger {
 	}
 
 	if len(services) == 0 {
-		ps = devPath.Processes()
+		ps = devPath.DB().ProcessesList()
 	}
 
 	return &Logger{ps}
 }
 
-func (l *Logger) watchService(ch chan string, process process) {
+func (l *Logger) watchService(ch chan string, process db.Process) {
 	cmd := exec.Command("tail", "-f", process.LogFile)
 	em := NewProcessLogEmitter(process, ch)
 	cmd.Stdout = em

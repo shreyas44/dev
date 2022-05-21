@@ -8,19 +8,11 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/charmbracelet/glamour"
-	"github.com/charmbracelet/glamour/ansi"
+	"github.com/rodaine/table"
+	"github.com/shreyas44/dev/db"
 	"github.com/shreyas44/dev/dev"
 	"github.com/spf13/cobra"
 )
-
-var tableStyle = ansi.StyleConfig{
-	Table: ansi.StyleTable{
-		RowSeparator:    stringPtr(""),
-		ColumnSeparator: stringPtr("  "),
-		CenterSeparator: stringPtr(""),
-	},
-}
 
 // psCmd represents the ps command
 var psCmd = &cobra.Command{
@@ -29,14 +21,16 @@ var psCmd = &cobra.Command{
 	Run: func(cmd *cobra.Command, args []string) {
 		wd, _ := os.Getwd()
 		devNixPath, _ := dev.GetDevNixPath(wd)
-		processes := devNixPath.Processes()
-		if len(processes) == 0 {
-			fmt.Println("No services running")
-		} else {
-			r, _ := glamour.NewTermRenderer(glamour.WithStyles(tableStyle))
-			out, _ := r.Render(processes.Markdown())
-			fmt.Print(out)
+		t := table.New("Name", "PID", "Status")
+		for _, process := range devNixPath.DB().ProcessesList() {
+			status := string(process.Status)
+			if process.Status == db.ProcessStatusExited {
+				status += fmt.Sprintf(" (%d)", process.ExitCode)
+			}
+
+			t.AddRow(process.Name, process.PID, status)
 		}
+		t.Print()
 	},
 }
 
