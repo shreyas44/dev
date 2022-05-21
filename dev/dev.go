@@ -60,11 +60,6 @@ func (p *DevPath) Init() {
 }
 
 func (p *DevPath) startService(name string, service Service) {
-	// data := p.db()
-	// if process, ok := db.Processes[name]; ok {
-	// 	process.stop()
-	// }
-
 	logFile := p.logFilePath(name + ".log")
 	os.OpenFile(logFile, os.O_RDWR|os.O_CREATE|os.O_APPEND, os.ModePerm)
 	setupEnv(service.Env)
@@ -80,6 +75,8 @@ func (p *DevPath) startChild(child Child) {
 }
 
 func (p *DevPath) Start() {
+	p.Stop()
+
 	config := p.config()
 	s := newSpinner("Starting Services", "Started Services")
 	s.start()
