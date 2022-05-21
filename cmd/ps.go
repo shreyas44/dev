@@ -21,7 +21,7 @@ var psCmd = &cobra.Command{
 	Run: func(cmd *cobra.Command, args []string) {
 		wd, _ := os.Getwd()
 		devNixPath, _ := dev.GetDevNixPath(wd)
-		t := table.New("Name", "PID", "Status")
+		t := table.New("NAME", "PID", "SATUS")
 		for _, process := range devNixPath.DB().ProcessesList() {
 			status := string(process.Status)
 			if process.Status == db.ProcessStatusExited {
