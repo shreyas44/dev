@@ -69,13 +69,20 @@ func NewLogger(dev Dev, services ...string) (*Logger, error) {
 	return &Logger{ps}, nil
 }
 
-func (l *Logger) watchService(ch chan string, process db.Process) {
-	cmd := exec.Command("tail", "-f", "-n", "+1", process.LogFile)
-	em := NewProcessLogEmitter(process, ch)
-	cmd.Stdout = em
-	cmd.Stderr = em
-
-	cmd.Run()
+func (l *Logger) watchService(logCh chan string, process db.Process) {
+	em := NewProcessLogEmitter(process, logCh)
+	if process.Status == db.ProcessStatusExited {
+		cmd := exec.Command("cat", process.LogFile)
+		cmd.Stdout = em
+		cmd.Stderr = em
+		cmd.Run()
+		em.Write([]byte(fmt.Sprintf("exited with code %d", process.ExitCode)))
+	} else {
+		cmd := exec.Command("tail", "-f", "-n", "+1", process.LogFile)
+		cmd.Stdout = em
+		cmd.Stderr = em
+		cmd.Run()
+	}
 }
 
 func (l *Logger) Watch() {
