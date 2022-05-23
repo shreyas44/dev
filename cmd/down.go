@@ -6,7 +6,7 @@ import (
 
 var downCmd = &cobra.Command{
 	Use:          "down",
-	Short:        "Shutdown dev environment and stop processes",
+	Short:        "Stop running services",
 	SilenceUsage: true,
 	RunE: func(cmd *cobra.Command, args []string) error {
 		dev, err := getDev()

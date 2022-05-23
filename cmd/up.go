@@ -7,7 +7,7 @@ import (
 // runs "dev activate" before starting services
 var upCmd = &cobra.Command{
 	Use:          "up",
-	Short:        "Initialize dev environment and start processes",
+	Short:        "Initialize dev environment and start services",
 	SilenceUsage: true,
 	RunE: func(cmd *cobra.Command, args []string) error {
 		dev, err := getDev()

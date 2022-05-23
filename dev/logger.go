@@ -2,7 +2,6 @@ package dev
 
 import (
 	"fmt"
-	"math/rand"
 	"os/exec"
 	"strings"
 
@@ -10,12 +9,18 @@ import (
 	"github.com/shreyas44/dev/db"
 )
 
+var currentColor = 0
 var colors = []color.Attribute{
 	color.FgBlue,
 	color.FgMagenta,
 	color.FgCyan,
 	color.FgBlack,
 	color.FgGreen,
+}
+
+func getColor() color.Attribute {
+	currentColor = (currentColor + 1) % len(colors)
+	return colors[currentColor]
 }
 
 func trim(str string) string {
@@ -29,7 +34,7 @@ type ProcessLogEmitter struct {
 }
 
 func NewProcessLogEmitter(process db.Process, logCh chan string) *ProcessLogEmitter {
-	return &ProcessLogEmitter{process, logCh, colors[rand.Intn(len(colors))]}
+	return &ProcessLogEmitter{process, logCh, getColor()}
 }
 
 func (e *ProcessLogEmitter) Write(p []byte) (int, error) {

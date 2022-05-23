@@ -37,8 +37,8 @@ func getDBPath(dir string) string {
 func Load(dir string) *DB {
 	filePath := getDBPath(dir)
 	if _, err := os.Stat(filePath); os.IsNotExist(err) {
-		os.Create(filePath)
-		ioutil.WriteFile(filePath, []byte("{}"), os.ModePerm)
+		file, _ := os.Create(filePath)
+		file.Write([]byte("{}"))
 	}
 
 	db := &DB{Processes: make(map[string]Process)}

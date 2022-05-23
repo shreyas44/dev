@@ -15,7 +15,7 @@ import (
 // psCmd represents the ps command
 var psCmd = &cobra.Command{
 	Use:          "ps",
-	Short:        "List all running processes",
+	Short:        "List all running services and their status",
 	SilenceUsage: true,
 	RunE: func(cmd *cobra.Command, args []string) error {
 		dev, err := getDev()

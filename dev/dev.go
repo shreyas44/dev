@@ -12,6 +12,7 @@ import (
 	"github.com/shreyas44/dev/db"
 )
 
+var DevFileName = "dev.nix"
 var ErrNoDevFile = errors.New("no dev.nix file found")
 
 type Dev struct {
@@ -25,7 +26,7 @@ func (d *Dev) DB() *db.DB {
 func (d *Dev) config() Config {
 	var config Config
 	evalOut := bytes.NewBuffer(nil)
-	cmd := exec.Command("nix", "eval", "-f", path.Join(d.Path, "dev.nix"), "--json")
+	cmd := exec.Command("nix", "eval", "-f", path.Join(d.Path, DevFileName), "--json")
 	cmd.Stdout = evalOut
 	cmd.Run()
 	json.Unmarshal(evalOut.Bytes(), &config)
@@ -34,7 +35,7 @@ func (d *Dev) config() Config {
 }
 
 func (d *Dev) dirPath(elem ...string) string {
-	return path.Join(d.Path, ".dev-cli", path.Join(elem...))
+	return path.Join(d.Path, ".dev", path.Join(elem...))
 }
 
 func (d *Dev) logFilePath(elem ...string) string {
@@ -44,7 +45,7 @@ func (d *Dev) logFilePath(elem ...string) string {
 func (d *Dev) Init() {
 	dirPath := d.dirPath()
 	logsPath := d.dirPath("logs")
-	devNixPath := d.dirPath("..", "dev.nix")
+	devNixPath := d.dirPath("..", DevFileName)
 	nixPath := d.dirPath("nix")
 	profilePath := d.dirPath("nix", "profile")
 
@@ -153,7 +154,7 @@ func (d *Dev) runInitScript(script string) {
 }
 
 func Get(wd string) (Dev, error) {
-	if _, err := os.Stat(path.Join(wd, "dev.nix")); !os.IsNotExist(err) {
+	if _, err := os.Stat(path.Join(wd, DevFileName)); !os.IsNotExist(err) {
 		return Dev{wd}, nil
 	}
 

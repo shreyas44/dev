@@ -2,24 +2,26 @@ package cmd
 
 import (
 	"os"
+	"path"
 
 	"github.com/shreyas44/dev/dev"
 	"github.com/spf13/cobra"
 )
 
+var filePath string
+
 var rootCmd = &cobra.Command{
 	Use:   "dev",
-	Short: "A brief description of your application",
-	Long: `A longer description that spans multiple lines and likely contains
-examples and usage of using your application. For example:
-
-Cobra is a CLI library for Go that empowers applications.
-This application is a tool to generate the needed files
-to quickly create a Cobra application.`,
+	Short: "Reproducable dev environments",
 }
 
 func getDev() (dev.Dev, error) {
 	wd, err := os.Getwd()
+	if filePath != "" {
+		wd = path.Dir(filePath)
+		dev.DevFileName = path.Base(filePath)
+	}
+
 	if err != nil {
 		return dev.Dev{}, err
 	}
@@ -40,5 +42,5 @@ func Execute() {
 }
 
 func init() {
-	rootCmd.PersistentFlags().StringP("file", "f", "", "File to parse")
+	rootCmd.PersistentFlags().StringVarP(&filePath, "file", "f", "", "File to parse")
 }
