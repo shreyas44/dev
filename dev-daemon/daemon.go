@@ -25,6 +25,12 @@ func main() {
 			LogFile: outputFile,
 			Status:  db.ProcessStatusStarting,
 		}
+		onExit = func() {
+			process.Status = db.ProcessStatusExited
+			process.ExitCode = cmd.ProcessState.ExitCode()
+			db.UpdateProcess(devDir, process)
+			done <- true
+		}
 	)
 
 	db.UpdateProcess(devDir, process)
@@ -35,22 +41,19 @@ func main() {
 	cmd.Stderr = outFile
 	cmd.Start()
 
-	process.Status = "running"
+	process.Status = db.ProcessStatusRunning
 	db.UpdateProcess(devDir, process)
 
 	go func() {
 		<-sig
 		// cmd.Process.Kill() as syscall.SIGINT doesn't work for whatever reason
 		syscall.Kill(-cmd.Process.Pid, syscall.SIGKILL)
-		process.ExitCode = cmd.ProcessState.ExitCode()
-		process.Status = "stopped"
-		db.UpdateProcess(devDir, process)
-		done <- true
+		onExit()
 	}()
 
 	go func() {
 		cmd.Wait()
-		done <- true
+		onExit()
 	}()
 
 	<-done
